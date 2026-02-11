@@ -1,30 +1,56 @@
 {
   "expo": {
-    "name": "LumoTeleprompter",
-    "slug": "LumoTeleprompter",
+    "name": "Lumo Teleprompter",
+    "slug": "lumo-teleprompter",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#4A0000"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lumo.teleprompter",
+      "requireFullScreen": false,
+      "infoPlist": {
+        "UIRequiresFullScreen": false,
+        "NSLocalNetworkUsageDescription": "Lumo Teleprompter uses local network access to enable remote control functionality between devices on the same Wi-Fi network.",
+        "NSBonjourServices": ["_lumo._tcp"],
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ]
+      }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.lumo.teleprompter",
+      "versionCode": 1,
+      "icon": "./assets/icon.png",
+      "permissions": [
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.INTERNET"
+      ],
+      "edgeToEdgeEnabled": true
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      "expo-screen-orientation"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ea18993e-82f6-4f94-98f9-6646741bae06"
+      }
+    },
+    "owner": "remanente"
   }
 }
