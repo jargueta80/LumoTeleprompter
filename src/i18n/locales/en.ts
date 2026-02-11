@@ -79,7 +79,7 @@ export const en = {
     themeWarmGradient: 'Warm Reading',
     themeBlueGradient: 'Ocean Calm',
     themeSoftLight: 'Daylight',
-    themeRoseLight: 'Soft Rose',
+    themeRoseDark: 'Rose Dark',
   },
   remote: {
     title: 'Remote Control',
