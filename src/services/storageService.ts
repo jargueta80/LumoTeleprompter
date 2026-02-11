@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Script, AppSettings, ColorPreset } from '../types';
+import { Script, AppSettings, ColorPreset, ScriptCategory, DEFAULT_CATEGORIES } from '../types';
 import {
   DEFAULT_TEXT_SETTINGS,
   DEFAULT_PLAYBACK_SETTINGS,
@@ -10,6 +10,7 @@ const KEYS = {
   SCRIPTS: '@lumo_scripts',
   SETTINGS: '@lumo_settings',
   PRESETS: '@lumo_presets',
+  CATEGORIES: '@lumo_categories',
 };
 
 export const storageService = {
@@ -102,5 +103,44 @@ export const storageService = {
       settings.activePresetId = settings.colorPresets[0]?.id || null;
     }
     await this.saveSettings(settings);
+  },
+
+  async getCategories(): Promise<ScriptCategory[]> {
+    try {
+      const data = await AsyncStorage.getItem(KEYS.CATEGORIES);
+      if (data) {
+        return JSON.parse(data);
+      }
+      return DEFAULT_CATEGORIES;
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      return DEFAULT_CATEGORIES;
+    }
+  },
+
+  async saveCategories(categories: ScriptCategory[]): Promise<void> {
+    try {
+      await AsyncStorage.setItem(KEYS.CATEGORIES, JSON.stringify(categories));
+    } catch (error) {
+      console.error('Error saving categories:', error);
+    }
+  },
+
+  async addCategory(name: string): Promise<ScriptCategory> {
+    const categories = await this.getCategories();
+    const newCategory: ScriptCategory = {
+      id: `custom_${Date.now()}`,
+      name,
+      isDefault: false,
+    };
+    categories.push(newCategory);
+    await this.saveCategories(categories);
+    return newCategory;
+  },
+
+  async deleteCategory(id: string): Promise<void> {
+    const categories = await this.getCategories();
+    const filtered = categories.filter((c) => c.id !== id || c.isDefault);
+    await this.saveCategories(filtered);
   },
 };

@@ -4,7 +4,22 @@ export interface Script {
   content: string;
   createdAt: number;
   updatedAt: number;
+  category?: string;
+  isFavorite?: boolean;
 }
+
+export interface ScriptCategory {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+}
+
+export const DEFAULT_CATEGORIES: ScriptCategory[] = [
+  { id: 'all', name: 'Todos', isDefault: true },
+  { id: 'general', name: 'General', isDefault: true },
+  { id: 'work', name: 'Trabajo', isDefault: true },
+  { id: 'content', name: 'Contenido', isDefault: true },
+];
 
 export interface TextSettings {
   fontSize: number;

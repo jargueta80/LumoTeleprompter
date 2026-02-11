@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,17 @@ import {
   Alert,
   TextInput,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useApp } from '../contexts/AppContext';
 import { Button } from '../components';
-import { Script } from '../types';
+import { Script, ScriptCategory, DEFAULT_CATEGORIES } from '../types';
 import { useTranslation } from '../hooks';
 import { useTheme } from '../contexts/ThemeContext';
+import { storageService } from '../services/storageService';
 
 type RootStackParamList = {
   Home: undefined;
@@ -38,7 +40,36 @@ export function HomeScreen() {
   const { t, language } = useTranslation();
   const { theme } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categories, setCategories] = useState<ScriptCategory[]>(DEFAULT_CATEGORIES);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [selectedScriptCategory, setSelectedScriptCategory] = useState('general');
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    const cats = await storageService.getCategories();
+    setCategories(cats);
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    const newCat = await storageService.addCategory(newCategoryName.trim());
+    setCategories([...categories, newCat]);
+    setNewCategoryName('');
+    setCategoryModalVisible(false);
+  };
+
+  const filteredScripts = scripts.filter((script) => {
+    if (showFavoritesOnly && !script.isFavorite) return false;
+    if (selectedCategory === 'all') return true;
+    return script.category === selectedCategory;
+  });
 
   const handleCreateScript = async () => {
     if (!newTitle.trim()) {
@@ -52,12 +83,20 @@ export function HomeScreen() {
       content: '',
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      category: selectedScriptCategory,
+      isFavorite: false,
     };
 
     await saveScript(newScript);
     setNewTitle('');
+    setSelectedScriptCategory('general');
     setModalVisible(false);
     navigation.navigate('Editor', { scriptId: newScript.id });
+  };
+
+  const toggleFavorite = async (script: Script) => {
+    const updatedScript = { ...script, isFavorite: !script.isFavorite };
+    await saveScript(updatedScript);
   };
 
   const handleDeleteScript = (script: Script) => {
@@ -90,6 +129,12 @@ export function HomeScreen() {
       onPress={() => navigation.navigate('Editor', { scriptId: item.id })}
       onLongPress={() => handleDeleteScript(item)}
     >
+      <TouchableOpacity
+        style={styles.favoriteButton}
+        onPress={() => toggleFavorite(item)}
+      >
+        <Text style={styles.favoriteIcon}>{item.isFavorite ? '★' : '☆'}</Text>
+      </TouchableOpacity>
       <View style={styles.scriptInfo}>
         <Text style={[styles.scriptTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
           {item.title}
@@ -136,17 +181,58 @@ export function HomeScreen() {
         </View>
       </View>
 
-      {scripts.length === 0 ? (
+      {/* Category Tabs */}
+      <View style={styles.categoryContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.categoryTab,
+                { backgroundColor: selectedCategory === cat.id ? theme.colors.accent : theme.colors.surface }
+              ]}
+              onPress={() => setSelectedCategory(cat.id)}
+            >
+              <Text style={[
+                styles.categoryTabText,
+                { color: selectedCategory === cat.id ? '#FFFFFF' : theme.colors.textPrimary }
+              ]}>
+                {cat.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[styles.categoryTab, styles.addCategoryTab, { backgroundColor: theme.colors.surface }]}
+            onPress={() => setCategoryModalVisible(true)}
+          >
+            <Text style={[styles.categoryTabText, { color: theme.colors.textPrimary }]}>+ Carpeta</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
+      {/* Favorites Toggle */}
+      <TouchableOpacity
+        style={[styles.favoritesToggle, { backgroundColor: showFavoritesOnly ? theme.colors.accent : theme.colors.surface }]}
+        onPress={() => setShowFavoritesOnly(!showFavoritesOnly)}
+      >
+        <Text style={[styles.favoritesToggleText, { color: showFavoritesOnly ? '#FFFFFF' : theme.colors.textSecondary }]}>
+          Solo favoritos
+        </Text>
+      </TouchableOpacity>
+
+      {filteredScripts.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📝</Text>
-          <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>{t('home', 'noScripts')}</Text>
+          <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>
+            {showFavoritesOnly ? 'No hay favoritos' : t('home', 'noScripts')}
+          </Text>
           <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-            {t('home', 'createFirst')}
+            {showFavoritesOnly ? 'Marca guiones como favoritos' : t('home', 'createFirst')}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={scripts}
+          data={filteredScripts}
           keyExtractor={(item) => item.id}
           renderItem={renderScript}
           contentContainerStyle={styles.list}
@@ -164,6 +250,7 @@ export function HomeScreen() {
         />
       </View>
 
+      {/* New Script Modal */}
       <Modal
         visible={modalVisible}
         transparent
@@ -181,6 +268,23 @@ export function HomeScreen() {
               onChangeText={setNewTitle}
               autoFocus
             />
+            <Text style={[styles.categorySelectLabel, { color: theme.colors.textSecondary }]}>Guardar en:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categorySelectScroll}>
+              {categories.filter(c => c.id !== 'all').map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categorySelectItem,
+                    { backgroundColor: selectedScriptCategory === cat.id ? theme.colors.accent : theme.colors.backgroundLight }
+                  ]}
+                  onPress={() => setSelectedScriptCategory(cat.id)}
+                >
+                  <Text style={{ color: selectedScriptCategory === cat.id ? '#FFF' : theme.colors.textPrimary }}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
             <View style={styles.modalButtons}>
               <Button
                 title={t('common', 'cancel')}
@@ -191,6 +295,39 @@ export function HomeScreen() {
                 variant="ghost"
               />
               <Button title={t('common', 'create')} onPress={handleCreateScript} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* New Category Modal */}
+      <Modal
+        visible={categoryModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCategoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>Nueva Carpeta</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.colors.backgroundLight, color: theme.colors.textPrimary }]}
+              placeholder="Nombre de la carpeta"
+              placeholderTextColor={theme.colors.textMuted}
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                title={t('common', 'cancel')}
+                onPress={() => {
+                  setNewCategoryName('');
+                  setCategoryModalVisible(false);
+                }}
+                variant="ghost"
+              />
+              <Button title={t('common', 'create')} onPress={handleAddCategory} />
             </View>
           </View>
         </View>
@@ -330,5 +467,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
+  },
+  categoryContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  categoryScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  categoryTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  addCategoryTab: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderStyle: 'dashed',
+  },
+  categoryTabText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  favoritesToggle: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  favoritesToggleText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  favoriteButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  favoriteIcon: {
+    fontSize: 20,
+    color: '#FFD700',
+  },
+  categorySelectLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  categorySelectScroll: {
+    marginBottom: 16,
+  },
+  categorySelectItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginRight: 8,
   },
 });
