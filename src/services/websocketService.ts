@@ -1,8 +1,17 @@
 import { RemoteCommand, RemoteState } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 
 // Relay Server Configuration
 const RELAY_SERVER_URL = 'wss://lumo-relay.onrender.com';
+
+// Generate simple random session ID (React Native compatible)
+function generateRandomId(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 type MessageHandler = (command: RemoteCommand) => void;
 type ConnectionHandler = (connected: boolean) => void;
@@ -56,7 +65,7 @@ class RelayWebSocketService {
   // Generate unique session ID for teleprompter mode
   generateSessionId(): string {
     // Generate a short, easy-to-type session ID
-    const id = uuidv4().split('-')[0].toUpperCase();
+    const id = generateRandomId();
     this.sessionId = id;
     return id;
   }
